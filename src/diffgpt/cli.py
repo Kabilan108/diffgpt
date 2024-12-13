@@ -1,6 +1,13 @@
 import click
 
-from . import get_diff, generate_commit_message, get_icl_examples, commit_changes
+from . import (
+    commit_changes,
+    get_diff,
+    get_message_examples,
+    generate_commit_message,
+    save_examples,
+    CONFIG_FILE,
+)
 
 
 @click.group(invoke_without_command=True)
@@ -26,18 +33,21 @@ def cli(ctx, long):
 
 
 @cli.command()
-def learn():
+@click.option(
+    "-n",
+    "--num-examples",
+    type=int,
+    default=20,
+    help="number of commit examples to collect (default: 20)",
+)
+def learn(num_examples):
     """get examples of the user's commits to use for ICL"""
-    # examples = get_icl_examples()
-    # if not examples:
-    #     click.echo("no commit history found", err=True)
-    #     return
-    #
-    # # TODO: Implement training logic
-    # click.echo(f"collected {len(examples)} training examples.")
-    # for example in examples:
-    #     click.echo(f"---\n{example}\n---\n")
-    click.echo("not implemented yet", err=True)
+    examples = get_message_examples(num_examples)
+    if not examples:
+        click.echo("no commit history found", err=True)
+        return
+    save_examples(examples)
+    click.echo(f"saved examples to {CONFIG_FILE}")
 
 
 if __name__ == "__main__":
