@@ -4,13 +4,17 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
-    { name = "Tony Okeke", email = "muaddib@lisan-al-gaib" }
+    { name = "Tony Okeke", email = "tonykabilanokeke@gmail.com" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "click>=8.1.7",
+    "openai>=1.57.3",
+    "pydantic>=2.10.3",
+]
 
 [project.scripts]
-diffgpt = "diffgpt:main"
+diffgpt = "diffgpt.cli:cli"
 
 [build-system]
 requires = ["hatchling"]
