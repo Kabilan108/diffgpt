@@ -1,0 +1,17 @@
+[project]
+name = "diffgpt"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Tony Okeke", email = "muaddib@lisan-al-gaib" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+diffgpt = "diffgpt:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
