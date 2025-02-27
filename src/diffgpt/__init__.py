@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import json
 import sys
+import os
 
 CONFIG_FILE = Path("~/.diffgpt.json").expanduser()
 
@@ -26,7 +27,17 @@ class DetailedCommitMessage(CommitMessage):
     )
 
 
-client = OpenAI()
+def create_client():
+    if os.environ.get("GEMINI_API_KEY", None):
+        client = OpenAI(
+            api_key=os.environ.get("GEMINI_API_KEY"),
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
+        return client, "gemini-2.0-flash"
+    return OpenAI(), "gpt-4o-mini"
+
+
+client, model_str = create_client()
 
 
 def load_config() -> Config | None:
@@ -106,7 +117,7 @@ def generate_commit_message(diff: str, detailed: bool = False) -> str:
 
     try:
         completion = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
+            model=model_str,
             messages=messages,
             response_format=model,
             temperature=0.0,
