@@ -91,7 +91,6 @@ The commit message should accurately describe the changes. Do not include explan
 	userMessage := fmt.Sprintf("Generate a commit message for the following diff:\n```diff\n%s\n```", diff)
 
 	if detailed {
-		fmt.Println("generating detailed commit")
 		r, err := Generate[DetailedCommit](
 			ctx, client, model, "detailed_commit",
 			"a git commit message with a description of the changes made",

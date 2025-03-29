@@ -3,8 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 
+	"github.com/kabilan108/diffgpt/internal/git"
 	"github.com/kabilan108/diffgpt/internal/llm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -33,34 +36,35 @@ set the following environment variables to use a different provider.
   DIFFGPT_MODEL:     model to use for generation (e.g. gpt-4o, anthropic/claude-3-haiku
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// placeholder for core logic
-		if len(args) == 0 {
-			fmt.Printf("api key:   '%v'\n", o.apiKey)
-			fmt.Printf("base url:  '%v'\n", o.baseUrl)
-			fmt.Printf("model:     '%v'\n", o.model)
+		if o.apiKey == "" {
+			return fmt.Errorf("API Key not provided. Set DIFFGPT_API_KEY or use --api-key flag")
+		}
+		client := llm.NewClient(o.apiKey, o.baseUrl)
+
+		var diffContent string
+		var err error
+
+		stat, _ := os.Stdin.Stat()
+		isPiped := (stat.Mode() & os.ModeCharDevice) == 0
+
+		if isPiped {
+			diffBytes, readErr := io.ReadAll(os.Stdin)
+			if readErr != nil {
+				return fmt.Errorf("failed to read diff from stdin: %w", readErr)
+			}
+			diffContent = string(diffBytes)
+		} else {
+			diffContent, err = git.GetStagedDiff()
+			if err != nil {
+				return fmt.Errorf("failed to get staged diff: %w", err)
+			}
+		}
+
+		if strings.TrimSpace(diffContent) == "" {
+			fmt.Fprintln(os.Stderr, "No changes to commit")
 			return nil
 		}
 
-		// TODO:
-		// 1. Initialize LLM client (using cfgAPIKey, cfgBaseURL)
-		client := llm.NewClient(o.apiKey, o.baseUrl)
-
-		// 2. Detect input source (stdin vs. git diff --staged)
-		// 3. Get diff content
-		diffContent := `--- a/example.txt
-+++ b/example.txt
-@@ -1,3 +1,4 @@
- Line 1
- Line 2
- Line 3
-+Added Line 4
-` // Dummy diff for now
-		fmt.Println("Using dummy diff content for testing:")
-		fmt.Println(diffContent)
-		fmt.Println("---")
-
-		// 4. Handle empty diff
-		// 5. Call LLM to generate message (using cfgModel)
 		commitMsg, err := llm.GenerateCommitMessage(
 			context.Background(), client, o.model, diffContent, o.detailed,
 		)
@@ -68,13 +72,13 @@ set the following environment variables to use a different provider.
 			return fmt.Errorf("failed to generate commit message: %w", err)
 		}
 
-		fmt.Println("Generated Commit Message:")
-		fmt.Println(commitMsg)
-		fmt.Println("---")
-		// 6. Launch git commit -eF -
-		// 7. Handle errors throughout
+		if err := git.Commit(commitMsg); err != nil {
+			if strings.Contains(err.Error(), "exit status") {
+				return nil
+			}
+			return fmt.Errorf("failed to run git commit: %w", err)
+		}
 
-		// return fmt.Errorf("not implemented")
 		return nil
 	},
 }
@@ -91,7 +95,7 @@ func init() {
 	// diffgpt flags
 	rootCmd.Flags().StringVarP(&o.apiKey, "api-key", "k", "", "api key for llm provider")
 	rootCmd.Flags().StringVarP(&o.baseUrl, "base-url", "u", "https://api.openai.com/v1", "base url for llm provider")
-	rootCmd.Flags().StringVarP(&o.apiKey, "model", "m", "gpt-4o-mini", "llm to use for generation")
+	rootCmd.Flags().StringVarP(&o.model, "model", "m", "gpt-4o-mini", "llm to use for generation")
 	rootCmd.Flags().BoolVarP(&o.detailed, "detailed", "d", false, "whether to generate a detailed commit message")
 
 	// bind env vars to flags
