@@ -1,4 +1,4 @@
-name: Release binary
+name: Release diffgpt Binary
 
 on:
   push:
@@ -10,30 +10,30 @@ permissions:
 
 jobs:
   build-and-release:
-    name: Build and release for linux
+    name: Build and Release for Linux
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
-        uses: actions/checkoutv4
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
-      - name: Build linux binary
+      - name: Build Linux Binary
         run: |
-          BINARY_NAME="diffgpt"
-          # ldflags removes debug symbols making binary smaller & ./... = cwd or subdirs
+          BINARY_NAME="diffgpt-linux-amd64"
           go build -ldflags="-s -w" -o $BINARY_NAME ./...
         env:
           GOOS: linux
           GOARCH: amd64
 
-      - name: Create release & upload binary
+      - name: Create Release and Upload Binary
         uses: softprops/action-gh-release@v2
         with:
-          files: diffgpt
+          files: diffgpt-linux-amd64
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
