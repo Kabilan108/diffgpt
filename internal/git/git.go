@@ -72,7 +72,8 @@ func GetRepoRoot(path string) (string, error) {
 }
 
 func GetCommitLog(repoPath, startRef string, count int) ([]CommitInfo, error) {
-	args := []string{"log", fmt.Sprintf("--format=format:%%H %%s"), fmt.Sprintf("-n %d", count)}
+	// Fix: Format string should not include space
+	args := []string{"log", "--format=format:%H %s", fmt.Sprintf("-n%d", count)}
 	if startRef != "" {
 		args = append(args, startRef)
 	}
@@ -85,10 +86,20 @@ func GetCommitLog(repoPath, startRef string, count int) ([]CommitInfo, error) {
 	lines := strings.Split(stdout, "\n")
 	commits := make([]CommitInfo, 0, len(lines))
 	for _, line := range lines {
-		parts := strings.SplitN(line, " ", 2)
-		if len(parts) == 2 {
-			commits = append(commits, CommitInfo{SHA: parts[0], Subject: parts[1]})
+		if line == "" {
+			continue
 		}
+		// Fix: Use proper indexing to handle first space in commit message
+		hashEndIndex := 40 // SHA1 hash length
+		if len(line) < hashEndIndex {
+			continue // Malformed line
+		}
+		sha := line[:hashEndIndex]
+		subject := ""
+		if len(line) > hashEndIndex+1 {
+			subject = line[hashEndIndex+1:]
+		}
+		commits = append(commits, CommitInfo{SHA: sha, Subject: subject})
 	}
 	return commits, nil
 }
@@ -198,6 +209,10 @@ func Commit(msg string) error {
 	// wait for write to finish
 	writeErr := <-writeErrChan
 	if writeErr != nil {
+		// Kill the process to avoid leaving it hanging if stdin write failed
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
 		return writeErr
 	}
 

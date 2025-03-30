@@ -93,7 +93,11 @@ func SaveConfig(cfg *Config) error {
 	}
 
 	if err := os.Rename(tempFile, configPath); err != nil {
-		_ = os.Remove(tempFile)
+		// Handle cleanup failure explicitly rather than ignoring it
+		if removeErr := os.Remove(tempFile); removeErr != nil {
+			return fmt.Errorf("failed to rename temp file to %s: %w (and failed to remove temp file: %v)", 
+				configPath, err, removeErr)
+		}
 		return fmt.Errorf("failed to rename temporary config file to %s: %w", configPath, err)
 	}
 

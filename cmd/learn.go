@@ -46,7 +46,10 @@ if [repo-path] is omitted, learns from the current repository.`,
 		if err != nil {
 			return fmt.Errorf("failed to determine repository root: %w", err)
 		}
-		absRepoRoot, _ := filepath.Abs(repoRoot) // Use absolute path for consistency
+		absRepoRoot, err := filepath.Abs(repoRoot) // Use absolute path for consistency
+		if err != nil {
+			return fmt.Errorf("failed to get absolute path for repository root: %w", err)
+		}
 
 		// Determine storage key
 		storageKey := absRepoRoot

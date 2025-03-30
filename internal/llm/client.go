@@ -108,7 +108,7 @@ func GenerateCommitMessage(
 	examples []config.Example,
 ) (string, error) {
 	systemMessage := `You are an expert programmer assisting with writing git commit messages.
-Analyze the provided code diff and generate a concise, informative commit messag following
+Analyze the provided code diff and generate a concise, informative commit message following
 conventional commit standards (e.g., "feat: add user login functionality").
 The commit message should accurately describe the changes. Do not include explanations or apologies.
 `

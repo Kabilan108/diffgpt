@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -49,22 +50,22 @@ set the following environment variables to use a different provider.
 		stat, _ := os.Stdin.Stat()
 		isPiped := (stat.Mode() & os.ModeCharDevice) == 0
 
+		// Attempt to determine repo root regardless of input mode
+		currentRepoRoot, repoErr := git.GetRepoRoot("")
+		if repoErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not determine repo root: %v\n", repoErr)
+			repoRoot = ""
+		} else {
+			repoRoot = currentRepoRoot
+		}
+
 		if isPiped {
 			diffBytes, readErr := io.ReadAll(os.Stdin)
 			if readErr != nil {
 				return fmt.Errorf("failed to read diff from stdin: %w", readErr)
 			}
 			diffContent = string(diffBytes)
-			repoRoot = ""
 		} else {
-			currentRepoRoot, repoErr := git.GetRepoRoot("")
-			if repoErr != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not determine repo root: %v\n", repoErr)
-				repoRoot = ""
-			} else {
-				repoRoot = currentRepoRoot
-			}
-
 			diffContent, err = git.GetStagedDiff()
 			if err != nil {
 				return fmt.Errorf("failed to get staged diff: %w", err)
@@ -87,9 +88,13 @@ set the following environment variables to use a different provider.
 			}
 			// load repo-specific examples
 			if repoRoot != "" {
-				absRepoRoot, _ := filepath.Abs(repoRoot)
-				if repoEx, ok := cfg.Examples[absRepoRoot]; ok {
-					examples = append(examples, repoEx...)
+				absRepoRoot, err := filepath.Abs(repoRoot)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to get absolute path for repo root: %v\n", err)
+				} else {
+					if repoEx, ok := cfg.Examples[absRepoRoot]; ok {
+						examples = append(examples, repoEx...)
+					}
 				}
 			}
 		}
@@ -102,7 +107,10 @@ set the following environment variables to use a different provider.
 		}
 
 		if err := git.Commit(commitMsg); err != nil {
-			if strings.Contains(err.Error(), "exit status") {
+			// Check for specific exit codes that indicate user actions rather than errors
+			// Git returns 1 when commit is aborted in editor
+			if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+				fmt.Fprintln(os.Stderr, "Commit was aborted or canceled by user")
 				return nil
 			}
 			return fmt.Errorf("failed to run git commit: %w", err)
