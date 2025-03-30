@@ -106,6 +106,7 @@ if [repo-path] is omitted, learns from the current repository.`,
 
 
 			// TODO: filter commits based on max length (tokens)
+			// Issue URL: https://github.com/Kabilan108/diffgpt/issues/1
 
 			learnedExamples = append(learnedExamples, config.Example{
 				Diff:    diff,
