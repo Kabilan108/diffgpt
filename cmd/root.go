@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/kabilan108/diffgpt/internal/config"
 	"github.com/kabilan108/diffgpt/internal/git"
 	"github.com/kabilan108/diffgpt/internal/llm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	// "github.com/spf13/viper"
 )
 
 type Options struct {
@@ -43,6 +44,7 @@ set the following environment variables to use a different provider.
 
 		var diffContent string
 		var err error
+		var repoRoot string
 
 		stat, _ := os.Stdin.Stat()
 		isPiped := (stat.Mode() & os.ModeCharDevice) == 0
@@ -53,7 +55,16 @@ set the following environment variables to use a different provider.
 				return fmt.Errorf("failed to read diff from stdin: %w", readErr)
 			}
 			diffContent = string(diffBytes)
+			repoRoot = ""
 		} else {
+			currentRepoRoot, repoErr := git.GetRepoRoot("")
+			if repoErr != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not determine repo root: %v\n", repoErr)
+				repoRoot = ""
+			} else {
+				repoRoot = currentRepoRoot
+			}
+
 			diffContent, err = git.GetStagedDiff()
 			if err != nil {
 				return fmt.Errorf("failed to get staged diff: %w", err)
@@ -65,8 +76,26 @@ set the following environment variables to use a different provider.
 			return nil
 		}
 
+		examples := []config.Example{}
+		cfg, loadErr := config.LoadConfig()
+		if loadErr != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load config: %v\n", loadErr)
+		} else {
+			// always load global examples if they exist
+			if globalEx, ok := cfg.Examples["global"]; ok {
+				examples = append(examples, globalEx...)
+			}
+			// load repo-specific examples
+			if repoRoot != "" {
+				absRepoRoot, _ := filepath.Abs(repoRoot)
+				if repoEx, ok := cfg.Examples[absRepoRoot]; ok {
+					examples = append(examples, repoEx...)
+				}
+			}
+		}
+
 		commitMsg, err := llm.GenerateCommitMessage(
-			context.Background(), client, o.model, diffContent, o.detailed,
+			context.Background(), client, o.model, diffContent, o.detailed, examples,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to generate commit message: %w", err)
@@ -108,7 +137,6 @@ func initConfig() {
 	viper.SetEnvPrefix("DIFFGPT")
 	viper.AutomaticEnv()
 
-	// TODO: extend this to load ICL examples from config file
 	o.apiKey = viper.GetString("api_key")
 	o.baseUrl = viper.GetString("base_url")
 	o.model = viper.GetString("model")

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/invopop/jsonschema"
+	"github.com/kabilan108/diffgpt/internal/config"
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 	"github.com/openai/openai-go/shared"
@@ -55,19 +56,27 @@ func NewClient(apiKey, baseURL string) openai.Client {
 }
 
 func Generate[T Commit | DetailedCommit](
-	ctx context.Context, client openai.Client, model, schemaName, schemaDesc, prompt, systemPrompt string,
+	ctx context.Context, client openai.Client,
+	model, schemaName, schemaDesc, prompt, systemPrompt string,
+	examples []openai.ChatCompletionMessageParamUnion,
 ) (T, error) {
-	completion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(systemPrompt),
-			openai.UserMessage(prompt),
-		},
-		ResponseFormat: newResponseSchema[T](schemaName, schemaDesc),
-		Model:          shared.ChatModel(model),
-	})
+	messages := []openai.ChatCompletionMessageParamUnion{
+		openai.SystemMessage(systemPrompt),
+	}
+
+	// prepend examples before user prompt
+	messages = append(messages, examples...)
+	messages = append(messages, openai.UserMessage(prompt))
+
+	completion, err := client.Chat.Completions.New(ctx,
+		openai.ChatCompletionNewParams{
+			Messages:       messages,
+			ResponseFormat: newResponseSchema[T](schemaName, schemaDesc),
+			Model:          shared.ChatModel(model),
+		})
 	if err != nil {
 		var zero T
-		return zero, err
+		return zero, fmt.Errorf("failed to call chat completion API: %w", err)
 	}
 
 	var resp T
@@ -80,21 +89,37 @@ func Generate[T Commit | DetailedCommit](
 	return resp, nil
 }
 
+func createUserMessage(diff string) string {
+	return fmt.Sprintf("Generate a commit message for the following diff:\n```diff\n%s\n```", diff)
+}
+
+func formatExamples(examples []config.Example) []openai.ChatCompletionMessageParamUnion {
+	apiExamples := make([]openai.ChatCompletionMessageParamUnion, 0, len(examples)*2)
+	for _, ex := range examples {
+		userMessage := createUserMessage(ex.Diff)
+		apiExamples = append(apiExamples, openai.UserMessage(userMessage))
+		apiExamples = append(apiExamples, openai.AssistantMessage(ex.Message))
+	}
+	return apiExamples
+}
+
 func GenerateCommitMessage(
 	ctx context.Context, client openai.Client, model, diff string, detailed bool,
+	examples []config.Example,
 ) (string, error) {
 	systemMessage := `You are an expert programmer assisting with writing git commit messages.
 Analyze the provided code diff and generate a concise, informative commit messag following
 conventional commit standards (e.g., "feat: add user login functionality").
 The commit message should accurately describe the changes. Do not include explanations or apologies.
 `
-	userMessage := fmt.Sprintf("Generate a commit message for the following diff:\n```diff\n%s\n```", diff)
+	userMessage := createUserMessage(diff)
+	apiExamples := formatExamples(examples)
 
 	if detailed {
 		r, err := Generate[DetailedCommit](
 			ctx, client, model, "detailed_commit",
 			"a git commit message with a description of the changes made",
-			userMessage, systemMessage,
+			userMessage, systemMessage, apiExamples,
 		)
 		if err != nil {
 			return "", err
@@ -103,7 +128,7 @@ The commit message should accurately describe the changes. Do not include explan
 	}
 
 	r, err := Generate[Commit](
-		ctx, client, model, "commit", "a git commit message", userMessage, systemMessage,
+		ctx, client, model, "commit", "a git commit message", userMessage, systemMessage, apiExamples,
 	)
 	if err != nil {
 		return "", err
