@@ -66,7 +66,7 @@ set the following environment variables to use a different provider.
 			}
 			diffContent = string(diffBytes)
 		} else {
-			diffContent, err = git.GetStagedDiff()
+			diffContent, err = git.GetStagedDiff(repoRoot)
 			if err != nil {
 				return fmt.Errorf("failed to get staged diff: %w", err)
 			}
@@ -106,7 +106,7 @@ set the following environment variables to use a different provider.
 			return fmt.Errorf("failed to generate commit message: %w", err)
 		}
 
-		if err := git.Commit(commitMsg); err != nil {
+		if err := git.Commit(commitMsg, repoRoot); err != nil {
 			// Check for specific exit codes that indicate user actions rather than errors
 			// Git returns 1 when commit is aborted in editor
 			if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {

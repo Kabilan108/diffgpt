@@ -149,31 +149,38 @@ func GetCommitMessage(repoPath, sha string) (string, error) {
 	return stdout, nil
 }
 
-// GetStagedDiff (existing function - no changes needed for now)
-func GetStagedDiff() (string, error) {
-	cmd := exec.Command("git", "diff", "--staged")
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
+// GetStagedDiff returns the diff of all staged changes.
+// An empty string is returned if there are no staged changes.
+func GetStagedDiff(repoPath string) (string, error) {
+	stdout, _, err := runGitCommand(repoPath, "diff", "--staged")
 	if err != nil {
-		// Check if it's just "no changes staged"
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 0 && stdout.Len() == 0 && stderr.Len() == 0 {
-			return "", nil // No staged changes is not an error for us
-		}
-		// Check if stderr indicates no changes (less reliable)
-		if stderr.Len() == 0 && stdout.Len() == 0 {
-			return "", nil // Assume no changes if output is empty
-		}
-		// Otherwise, it's a real error
-		return "", fmt.Errorf("git diff --staged failed: %w\nstderr: %s", err, stderr.String())
+		return "", fmt.Errorf("failed to get staged changes: %w", err)
 	}
-	return stdout.String(), nil
+	return stdout, nil
 }
 
-func Commit(msg string) error {
+// HasStagedChanges checks if there are any staged changes in the repository.
+func HasStagedChanges(repoPath string) (bool, error) {
+	// Use --quiet option which exits with 1 if there are differences and 0 if not
+	_, stderr, err := runGitCommand(repoPath, "diff", "--staged", "--quiet")
+	if err != nil {
+		// Exit code 1 with empty stderr indicates there are staged changes
+		if strings.Contains(err.Error(), "exit status 1") && stderr == "" {
+			return true, nil
+		}
+		return false, fmt.Errorf("failed to check for staged changes: %w", err)
+	}
+	// No error means exit code 0, which means no changes
+	return false, nil
+}
+
+func Commit(msg string, repoPath string) error {
+	// Use the common runGitCommand helper to maintain consistency
+	// However, we need to handle stdin and interactive editor differently
 	cmd := exec.Command("git", "commit", "-eF", "-")
+	if repoPath != "" {
+		cmd.Dir = repoPath
+	}
 
 	// get a pipe to stdin
 	stdinPipe, err := cmd.StdinPipe()
