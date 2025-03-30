@@ -21,8 +21,17 @@ const (
 	appConfigDir   = "diffgpt"
 )
 
+var (
+	osUserConfigDir = os.UserConfigDir
+	osMkdirAll      = os.MkdirAll
+	osWriteFile     = os.WriteFile
+	osReadFile      = os.ReadFile
+	osRename        = os.Rename
+	osRemove        = os.Remove // Need this for SaveConfig cleanup check
+)
+
 func GetConfigPath() (string, error) {
-	configDir, err := os.UserConfigDir()
+	configDir, err := osUserConfigDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user config dir: %w", err)
 	}
@@ -37,7 +46,7 @@ func ensureConfigDir() error {
 	}
 	appDir := filepath.Dir(configPath)
 
-	if err := os.MkdirAll(appDir, 0o750); err != nil {
+	if err := osMkdirAll(appDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create config directory %s: %w", appDir, err)
 	}
 	return nil
@@ -51,7 +60,7 @@ func LoadConfig() (*Config, error) {
 
 	cfg := &Config{Examples: make(map[string][]Example)}
 
-	data, err := os.ReadFile(configPath)
+	data, err := osReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// no config file, return default empty
@@ -87,15 +96,15 @@ func SaveConfig(cfg *Config) error {
 	}
 
 	tempFile := configPath + ".tmp"
-	err = os.WriteFile(tempFile, data, 0o600)
+	err = osWriteFile(tempFile, data, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to write temporary config file %s: %w", tempFile, err)
 	}
 
-	if err := os.Rename(tempFile, configPath); err != nil {
+	if err := osRename(tempFile, configPath); err != nil {
 		// Handle cleanup failure explicitly rather than ignoring it
-		if removeErr := os.Remove(tempFile); removeErr != nil {
-			return fmt.Errorf("failed to rename temp file to %s: %w (and failed to remove temp file: %v)", 
+		if removeErr := osRemove(tempFile); removeErr != nil {
+			return fmt.Errorf("failed to rename temp file to %s: %w (and failed to remove temp file: %v)",
 				configPath, err, removeErr)
 		}
 		return fmt.Errorf("failed to rename temporary config file to %s: %w", configPath, err)

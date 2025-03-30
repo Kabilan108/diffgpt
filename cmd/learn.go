@@ -104,6 +104,9 @@ if [repo-path] is omitted, learns from the current repository.`,
 				continue // Skip this commit if message fails
 			}
 
+
+			// TODO: filter commits based on max length (tokens)
+
 			learnedExamples = append(learnedExamples, config.Example{
 				Diff:    diff,
 				Message: fullMessage,
