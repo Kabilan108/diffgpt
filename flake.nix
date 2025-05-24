@@ -9,10 +9,10 @@
   in {
     packages.${system}.default = pkgs.stdenv.mkDerivation rec {
       pname = "diffgpt";
-      version = "0.4.0";
+      version = "0.4.1";
       src = pkgs.fetchurl {
         url = "https://github.com/Kabilan108/diffgpt/releases/download/v${version}/diffgpt-linux-amd64.tar.gz";
-        sha256 = "sha256-LWF8Cw4ctDdh6cHWlSUjuIVPL00n7hYUqZ2HKmnlN7E=";
+        sha256 = "sha256-7yc3gombv2HkQ9FUeHVQpcgZVrzCcxjGzRclYI2r5Xo=";
       };
       installPhase = ''
         mkdir -p $out/bin
