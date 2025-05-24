@@ -1,5 +1,5 @@
 build/diffgpt: $(shell find . -name '*.go')
-	GO111MODULE=on go build -o build/diffgpt .
+	GO111MODULE=on CGO_ENABLED=0 go build -ldflags="-s -w" -o build/diffgpt .
 
 build: build/diffgpt
 

@@ -8,8 +8,8 @@
 - `make clean` - Remove the build directory
 
 ## Alternative Build / Lint / Test Commands
-- Build: `go build .` or `go build -ldflags="-s -w" -o diffgpt .`
-- Cross-compile: `GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o diffgpt .`
+- Build: `go build .` or `CGO_ENABLED=0 go build -ldflags="-s -w" -o diffgpt .`
+- Cross-compile (static): `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o diffgpt .`
 - Lint: `go vet ./...`
 - Test (all): `go test ./...`
 - Test (single): `go test ./path/to/package -run TestName`

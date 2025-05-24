@@ -12,7 +12,7 @@
       version = "0.4.0";
       src = pkgs.fetchurl {
         url = "https://github.com/Kabilan108/diffgpt/releases/download/v${version}/diffgpt-linux-amd64.tar.gz";
-        sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        sha256 = "sha256-LWF8Cw4ctDdh6cHWlSUjuIVPL00n7hYUqZ2HKmnlN7E=";
       };
       installPhase = ''
         mkdir -p $out/bin
