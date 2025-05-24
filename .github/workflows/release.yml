@@ -23,17 +23,29 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
       - name: Build Linux Binary
         run: |
           BINARY_NAME="diffgpt"
-          go build -ldflags="-s -w" -o $BINARY_NAME .
+          go build -ldflags="-s -w -X main.version=${{ steps.version.outputs.version }}" -o $BINARY_NAME .
         env:
           GOOS: linux
           GOARCH: amd64
 
-      - name: Create Release and Upload Binary
+      - name: Create tarball
+        run: |
+          mkdir -p diffgpt-linux-amd64/bin
+          cp diffgpt diffgpt-linux-amd64/bin/
+          tar czf diffgpt-linux-amd64.tar.gz diffgpt-linux-amd64
+
+      - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          files: diffgpt
+          files: |
+            diffgpt
+            diffgpt-linux-amd64.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

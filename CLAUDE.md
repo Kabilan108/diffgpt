@@ -1,6 +1,13 @@
 # CLAUDE.md - DiffGPT Go Project Guidelines
 
-## Build / Lint / Test Commands
+## Build Commands
+- `make build` - Build the diffgpt binary to `build/diffgpt`
+- `make run` - Build and run the application  
+- `make install` - Install diffgpt globally using `go install`
+- `make deps` - Update Go module dependencies with `go mod tidy`
+- `make clean` - Remove the build directory
+
+## Alternative Build / Lint / Test Commands
 - Build: `go build .` or `go build -ldflags="-s -w" -o diffgpt .`
 - Cross-compile: `GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o diffgpt .`
 - Lint: `go vet ./...`
