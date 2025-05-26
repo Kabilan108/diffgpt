@@ -7,21 +7,29 @@
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
   in {
-    packages.${system}.default = pkgs.stdenv.mkDerivation rec {
+    packages.${system}.default = pkgs.buildGoModule rec {
       pname = "diffgpt";
-      version = "0.4.1";
-      src = pkgs.fetchurl {
-        url = "https://github.com/Kabilan108/diffgpt/releases/download/v${version}/diffgpt-linux-amd64.tar.gz";
-        sha256 = "sha256-7yc3gombv2HkQ9FUeHVQpcgZVrzCcxjGzRclYI2r5Xo=";
-      };
+      version = "latest";
+      src = ./.;
+
+      vendorHash = "sha256-YMPiHe2DEA/1E8wtB1GJf/pvJ0vl3TjfquZdvDA9NDU=";
+
+      buildPhase = ''
+        runHook preBuild
+        make build
+        runHook postBuild
+      '';
+
       installPhase = ''
+        runHook preInstall
         mkdir -p $out/bin
-        cp bin/diffgpt $out/bin/
-        chmod +x $out/bin/diffgpt
+        cp build/diffgpt $out/bin/
+        runHook postInstall
       '';
     };
     devShells.${system}.default = pkgs.mkShell {
       buildInputs = with pkgs; [
+        self.packages.${system}.default
         go
         gopls
         nodejs_20
