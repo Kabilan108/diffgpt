@@ -132,7 +132,7 @@ func init() {
 	// diffgpt flags
 	rootCmd.Flags().StringVarP(&o.apiKey, "api-key", "k", "", "api key for llm provider")
 	rootCmd.Flags().StringVarP(&o.baseUrl, "base-url", "u", "https://api.openai.com/v1", "base url for llm provider")
-	rootCmd.Flags().StringVarP(&o.model, "model", "m", "gpt-4o-mini", "llm to use for generation")
+	rootCmd.Flags().StringVarP(&o.model, "model", "m", "google/gemini-2.0-flash-001", "llm to use for generation")
 	rootCmd.Flags().BoolVarP(&o.detailed, "detailed", "d", false, "whether to generate a detailed commit message")
 
 	// bind env vars to flags
@@ -146,6 +146,10 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	o.apiKey = viper.GetString("api_key")
+	// Fallback to OPENROUTER_API_KEY if DIFFGPT_API_KEY is not set
+	if o.apiKey == "" {
+		o.apiKey = os.Getenv("OPENROUTER_API_KEY")
+	}
 	o.baseUrl = viper.GetString("base_url")
 	o.model = viper.GetString("model")
 }
